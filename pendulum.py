@@ -60,7 +60,7 @@ def feedback_lin(pos, vel, pos_d, vel_d, ff_acc):
 
 def interpolation_7_degree(pos, pos_d, T, t):
     if t > T:
-        return pos_d, 0, 0
+        return pos_d, 0, 0, 0
     a4 = 35 / T ** 4
     a5 = -84 / T ** 5
     a6 = 70 / T ** 6
@@ -69,7 +69,8 @@ def interpolation_7_degree(pos, pos_d, T, t):
     diff = pos_d - pos
     return (pos + s * diff,
             diff * (4 * a4 * t ** 3 + 5 * a5 * t ** 4 + 6 * a6 * t ** 5 + 7 * a7 * t ** 6),
-            diff * (12 * a4 * t ** 2 + 20 * a5 * t ** 3 + 30 * a6 * t ** 4 + 42 * a7 * t ** 5))
+            diff * (12 * a4 * t ** 2 + 20 * a5 * t ** 3 + 30 * a6 * t ** 4 + 42 * a7 * t ** 5),
+            diff * (24 * a4 * t + 60 * a5 * t ** 2 + 120 * a6 * t ** 3 + 210 * a7 * t ** 4))
 
 
 log_time = [t]
@@ -80,6 +81,8 @@ log_vel_d = [0]
 log_acc = [0]
 log_acc_d = [0]
 log_ctrl = []
+log_x_3 = [0]
+log_x_3_d = [0]
 u = 0
 
 if OWN_REG:
@@ -96,7 +99,7 @@ while t <= maxTime:
     pos, vel = p.getJointState(bodyId, jIdx)[:2]
     acc = (vel - prev_vel) / dt
 
-    curr_pos_d, curr_vel_d, curr_acc_d = interpolation_7_degree(q0_fact, pos_d, trajTime, t)
+    curr_pos_d, curr_vel_d, curr_acc_d, curr_x_3_d = interpolation_7_degree(q0_fact, pos_d, trajTime, t)
     u = feedback_lin(pos, vel, curr_pos_d, curr_vel_d, curr_acc_d)
 
     if OWN_REG:
@@ -115,9 +118,11 @@ while t <= maxTime:
     log_pos.append(pos)
     log_vel.append(vel)
     log_acc.append(acc)
+    log_x_3.append((acc - prev_acc) / dt)
     log_pos_d.append(curr_pos_d)
     log_vel_d.append(curr_vel_d)
     log_acc_d.append(curr_acc_d)
+    log_x_3_d.append(curr_x_3_d)
     prev_vel = vel
     prev_acc = acc
     log_ctrl.append(u)
@@ -127,25 +132,31 @@ while t <= maxTime:
 p.disconnect()
 
 # ----------------------------------- plots -----------------------------------
-plt.subplot(4, 1, 1)
+plt.subplot(5, 1, 1)
 plt.plot(log_time, log_pos, label='sim_pos')
 plt.plot(log_time, log_pos_d, label='ref_pos')
 plt.grid(True)
 plt.legend()
 
-plt.subplot(4, 1, 2)
+plt.subplot(5, 1, 2)
 plt.plot(log_time, log_vel, label='sim_vel')
 plt.plot(log_time, log_vel_d, label='ref_vel')
 plt.grid(True)
 plt.legend()
 
-plt.subplot(4, 1, 3)
+plt.subplot(5, 1, 3)
 plt.plot(log_time, log_acc, label='sim_acc')
 plt.plot(log_time, log_acc_d, label='ref_acc')
 plt.grid(True)
 plt.legend()
 
-plt.subplot(4, 1, 4)
+plt.subplot(5, 1, 4)
+plt.plot(log_time, log_x_3, label='sim_3')
+plt.plot(log_time, log_x_3_d, label='ref_3')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(5, 1, 5)
 plt.plot(log_time[0:-1], log_ctrl, label='control')
 plt.grid(True)
 plt.legend()
